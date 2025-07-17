@@ -46,16 +46,12 @@ export PATH="/opt/conda/envs/face-recognition/bin:$PATH"
 which python
 
 
-conda activate common_ljk
-conda remove --name face-recognition --all -y 
+
 conda create -n face-recognition python=3.10 -y
 conda activate face-recognition
 pip install -r requirements.txt
 
-
-pip install nvidia-cublas-cu11
-
-如果要使用cude的话需要安装
+如果要使用gpu需要安装cude
 conda install -c nvidia cudnn=8.9.2
 
 cuda
