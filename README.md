@@ -17,15 +17,13 @@
 
 - Python 3.8+
 - CUDA 11.0+ (可选，用于GPU加速)
-- Milvus 2.3+
+- Milvus 2.5+
 
 ### 2. 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
-![alt text](image.png)
-
 
 ### 3. 模型文件下载地址
 人脸识别相关：
@@ -40,7 +38,7 @@ https://huggingface.co/ezioruan/inswapper_128.onnx/tree/main
 模型位置：
 <img width="345" height="406" alt="image" src="https://github.com/user-attachments/assets/49f68f49-c732-42e6-944b-64a91a4beec6" />
 
-
+milvus文档参考：https://milvus.io/docs/zh/install_standalone-docker-compose.md
 
 ## 注意点
 ```
