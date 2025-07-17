@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI换脸系统</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 3em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+        
+        .upload-box:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+        
+        .upload-box.dragover {
+            border-color: #28a745;
+            background: #e8f5e8;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .preview-img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin-top: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .control-group {
+            margin: 20px 0;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .control-group input, .control-group select {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .action-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+        
+        .action-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .result-section {
+            margin-top: 40px;
+            text-align: center;
+        }
+        
+        .result-img {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎭 AI换脸系统</h1>
+            <p>基于 InsightFace 的智能换脸技术</p>
+        </div>
+        
+        <div class="content">
+            <div class="upload-section">
+                <div class="upload-box" id="sourceBox">
+                    <h3>📸 源人脸图像</h3>
+                    <p>选择要提取人脸特征的图像</p>
+                    <input type="file" id="sourceFile" class="file-input" accept="image/*">
+                    <button class="upload-btn" onclick="document.getElementById('sourceFile').click()">
+                        选择图像
+                    </button>
+                    <div id="sourcePreview"></div>
+                </div>
+                
+                <div class="upload-box" id="targetBox">
+                    <h3>🎯 目标图像</h3>
+                    <p>选择要被替换人脸的图像</p>
+                    <input type="file" id="targetFile" class="file-input" accept="image/*">
+                    <button class="upload-btn" onclick="document.getElementById('targetFile').click()">
+                        选择图像
+                    </button>
+                    <button class="upload-btn" onclick="previewFaces()" id="previewBtn" style="display:none;">
+                        预览人脸
+                    </button>
+                    <div id="targetPreview"></div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="faceIndex">选择要替换的人脸索引：</label>
+                    <input type="number" id="faceIndex" value="0" min="0" max="10">
+                    <small>（从0开始，0表示第一个人脸）</small>
+                </div>
+                
+                <div class="control-group">
+                    <button class="action-btn" onclick="swapFace()" id="swapBtn" disabled>
+                        🔄 开始换脸
+                    </button>
+                    <button class="action-btn" onclick="swapMultipleFaces()" id="swapMultipleBtn" disabled>
+                        👥 替换所有人脸
+                    </button>
+                </div>
+            </div>
+            
+            <div id="status" class="status" style="display: none;"></div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在处理中，请稍候...</p>
+            </div>
+            
+            <div class="result-section" id="resultSection" style="display: none;">
+                <h3>✨ 换脸结果</h3>
+                <img id="resultImg" class="result-img" alt="换脸结果">
+                <div style="margin-top: 20px;">
+                    <button class="action-btn" onclick="downloadResult()">
+                        💾 下载结果
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sourceFile = null;
+        let targetFile = null;
+        let resultBlob = null;
+
+        // 文件选择事件
+        document.getElementById('sourceFile').addEventListener('change', function(e) {
+            sourceFile = e.target.files[0];
+            if (sourceFile) {
+                previewImage(sourceFile, 'sourcePreview');
+                checkCanSwap();
+            }
+        });
+
+        document.getElementById('targetFile').addEventListener('change', function(e) {
+            targetFile = e.target.files[0];
+            if (targetFile) {
+                previewImage(targetFile, 'targetPreview');
+                document.getElementById('previewBtn').style.display = 'inline-block';
+                checkCanSwap();
+            }
+        });
+
+        // 拖拽上传
+        setupDragAndDrop('sourceBox', 'sourceFile');
+        setupDragAndDrop('targetBox', 'targetFile');
+
+        function setupDragAndDrop(boxId, fileInputId) {
+            const box = document.getElementById(boxId);
+            const fileInput = document.getElementById(fileInputId);
+
+            box.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                box.classList.add('dragover');
+            });
+
+            box.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                box.classList.remove('dragover');
+            });
+
+            box.addEventListener('drop', function(e) {
+                e.preventDefault();
+                box.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+
+        function previewImage(file, containerId) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const container = document.getElementById(containerId);
+                container.innerHTML = `<img src="${e.target.result}" class="preview-img" alt="预览图像">`;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function checkCanSwap() {
+            const canSwap = sourceFile && targetFile;
+            document.getElementById('swapBtn').disabled = !canSwap;
+            document.getElementById('swapMultipleBtn').disabled = !canSwap;
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        async function previewFaces() {
+            if (!targetFile) {
+                showStatus('请先选择目标图像', 'error');
+                return;
+            }
+
+            showLoading(true);
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', targetFile);
+
+                const response = await fetch('/api/v1/preview_faces', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const imageUrl = URL.createObjectURL(blob);
+                    
+                    const container = document.getElementById('targetPreview');
+                    container.innerHTML = `
+                        <img src="${imageUrl}" class="preview-img" alt="人脸预览">
+                        <p style="color: #666; margin-top: 10px;">
+                            图像中的人脸已标注索引号，请在下方输入要替换的人脸索引
+                        </p>
+                    `;
+                    
+                    showStatus('人脸预览成功！请查看标注的人脸索引', 'success');
+                } else {
+                    const error = await response.text();
+                    showStatus(`预览失败: ${error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`预览失败: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function swapFace() {
+            if (!sourceFile || !targetFile) {
+                showStatus('请选择源图像和目标图像', 'error');
+                return;
+            }
+
+            showLoading(true);
+            
+            try {
+                const formData = new FormData();
+                formData.append('source_image', sourceFile);
+                formData.append('target_image', targetFile);
+                formData.append('face_index', document.getElementById('faceIndex').value);
+
+                const response = await fetch('/api/v1/face_swap', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    resultBlob = await response.blob();
+                    const imageUrl = URL.createObjectURL(resultBlob);
+                    
+                    document.getElementById('resultImg').src = imageUrl;
+                    document.getElementById('resultSection').style.display = 'block';
+                    
+                    showStatus('换脸成功！', 'success');
+                } else {
+                    const error = await response.text();
+                    showStatus(`换脸失败: ${error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`换脸失败: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function swapMultipleFaces() {
+            if (!sourceFile || !targetFile) {
+                showStatus('请选择源图像和目标图像', 'error');
+                return;
+            }
+
+            showLoading(true);
+            
+            try {
+                const formData = new FormData();
+                formData.append('source_image', sourceFile);
+                formData.append('target_image', targetFile);
+
+                const response = await fetch('/api/v1/face_swap_multiple', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    resultBlob = await response.blob();
+                    const imageUrl = URL.createObjectURL(resultBlob);
+                    
+                    document.getElementById('resultImg').src = imageUrl;
+                    document.getElementById('resultSection').style.display = 'block';
+                    
+                    showStatus('多人脸换脸成功！', 'success');
+                } else {
+                    const error = await response.text();
+                    showStatus(`多人脸换脸失败: ${error}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`多人脸换脸失败: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function downloadResult() {
+            if (!resultBlob) {
+                showStatus('没有可下载的结果', 'error');
+                return;
+            }
+
+            const url = URL.createObjectURL(resultBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `face_swap_result_${Date.now()}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时人脸识别系统</title>
+    <style>
+        /* 保持之前的CSS样式不变 */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .video-container {
+            text-align: center;
+            margin: 30px 0;
+            position: relative;
+        }
+        
+        #camera-video, #camera-canvas {
+            max-width: 100%;
+            max-height: 500px;
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        #camera-canvas {
+            display: none;
+        }
+        
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .results h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .face-result {
+            background: white;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .face-result.recognized {
+            border-left: 4px solid #28a745;
+        }
+        
+        .face-result.unknown {
+            border-left: 4px solid #dc3545;
+        }
+        
+        .person-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .attributes {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .attribute {
+            background: #e9ecef;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 实时人脸识别系统</h1>
+            <p>基于 InsightFace + Milvus 的智能人脸识别</p>
+        </div>
+        
+        <div class="content">
+            <div class="controls">
+                <button id="startBtn" class="btn" onclick="startRecognition()">
+                    📹 开始人脸识别
+                </button>
+                <button id="stopBtn" class="btn" onclick="stopRecognition()" disabled>
+                    ⏹️ 停止识别
+                </button>
+            </div>
+            
+            <div id="status" class="status info" style="display: none;">
+                准备就绪，点击开始按钮启动摄像头
+            </div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在启动摄像头...</p>
+            </div>
+            
+            <div class="video-container">
+                <video id="camera-video" autoplay muted style="display: none;"></video>
+                <canvas id="camera-canvas"></canvas>
+                <div id="no-video" style="padding: 100px; color: #666; font-size: 1.2em;">
+                    📷 摄像头画面将在这里显示
+                </div>
+            </div>
+            
+            <div class="results" id="results" style="display: none;">
+                <h3>🔍 识别结果</h3>
+                <div id="recognition-results">
+                    <p>暂无识别结果</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isRecognizing = false;
+        let video = null;
+        let canvas = null;
+        let ctx = null;
+        let stream = null;
+        let sendInterval = null;
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function updateButtons(recognizing) {
+            document.getElementById('startBtn').disabled = recognizing;
+            document.getElementById('stopBtn').disabled = !recognizing;
+        }
+
+        async function startRecognition() {
+            try {
+                showLoading(true);
+                showStatus('正在启动摄像头...', 'info');
+                updateButtons(true);
+
+                // 获取摄像头权限
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 }, 
+                        height: { ideal: 480 } 
+                    } 
+                });
+
+                // 设置视频元素
+                video = document.getElementById('camera-video');
+                canvas = document.getElementById('camera-canvas');
+                ctx = canvas.getContext('2d');
+                
+                video.srcObject = stream;
+                video.style.display = 'block';
+                document.getElementById('no-video').style.display = 'none';
+
+                // 等待视频加载
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        resolve();
+                    };
+                });
+
+                // 建立WebSocket连接
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/api/v1/ws/camera_recognition`;
+                
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function(event) {
+                    console.log('WebSocket连接已建立');
+                    showLoading(false);
+                    showStatus('摄像头已启动，正在进行人脸识别...', 'success');
+                    isRecognizing = true;
+                    document.getElementById('results').style.display = 'block';
+                    
+                    // 开始发送图像帧
+                    startSendingFrames();
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        
+                        if (data.type === 'error') {
+                            console.error('服务器错误:', data.message);
+                            showStatus(`错误: ${data.message}`, 'error');
+                            return;
+                        }
+                        
+                        if (data.type === 'results') {
+                            displayResults(data.results || []);
+                            drawResults(data.results || []);
+                        }
+                    } catch (e) {
+                        console.error('解析消息失败:', e);
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    console.log('WebSocket连接已关闭');
+                    showLoading(false);
+                    if (isRecognizing) {
+                        showStatus('连接已断开', 'error');
+                    }
+                    stopSendingFrames();
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('WebSocket错误:', error);
+                    showLoading(false);
+                    showStatus('连接失败，请检查网络', 'error');
+                };
+
+            } catch (error) {
+                console.error('启动摄像头失败:', error);
+                showLoading(false);
+                showStatus('无法访问摄像头，请检查权限设置', 'error');
+                updateButtons(false);
+            }
+        }
+
+        function startSendingFrames() {
+            sendInterval = setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN && video && canvas) {
+                    // 将视频帧绘制到canvas
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // 转换为base64
+                    const imageData = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    // 发送到服务器
+                    ws.send(JSON.stringify({
+                        type: 'frame',
+                        image: imageData
+                    }));
+                }
+            }, 200); // 每200ms发送一帧，约5 FPS
+        }
+
+        function stopSendingFrames() {
+            if (sendInterval) {
+                clearInterval(sendInterval);
+                sendInterval = null;
+            }
+        }
+
+        function stopRecognition() {
+            isRecognizing = false;
+            updateButtons(false);
+            
+            // 停止发送帧
+            stopSendingFrames();
+            
+            // 关闭WebSocket
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            
+            // 停止摄像头
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            // 隐藏视频
+            if (video) {
+                video.style.display = 'none';
+                video.srcObject = null;
+            }
+            
+            document.getElementById('no-video').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            showStatus('人脸识别已停止', 'info');
+        }
+
+        function drawResults(results) {
+            if (!canvas || !ctx || !video) return;
+            
+            // 重新绘制视频帧
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // 绘制识别结果
+            results.forEach(result => {
+                const bbox = result.bbox;
+                if (!bbox || bbox.length < 4) return;
+                
+                const [x1, y1, x2, y2] = bbox;
+                const width = x2 - x1;
+                const height = y2 - y1;
+                
+                // 绘制人脸框
+                ctx.strokeStyle = result.recognition ? '#00ff00' : '#ff0000';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x1, y1, width, height);
+                
+                // 绘制标签
+                const labels = [];
+                if (result.recognition) {
+                    labels.push(`${result.recognition.person_name} (${(result.recognition.similarity * 100).toFixed(1)}%)`);
+                } else {
+                    labels.push('Unknown');
+                }
+                
+                if (result.age) labels.push(`Age: ${result.age}`);
+                if (result.gender) labels.push(`Gender: ${result.gender}`);
+                
+                // 绘制文本背景和文本
+                ctx.font = '16px Arial';
+                let yOffset = y1 - 10;
+                
+                labels.forEach(label => {
+                    const textMetrics = ctx.measureText(label);
+                    const textWidth = textMetrics.width;
+                    const textHeight = 20;
+                    
+                    // 背景
+                    ctx.fillStyle = result.recognition ? '#00ff00' : '#ff0000';
+                    ctx.fillRect(x1, yOffset - textHeight, textWidth + 10, textHeight);
+                    
+                    // 文本
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(label, x1 + 5, yOffset - 5);
+                    
+                    yOffset -= 25;
+                });
+            });
+        }
+
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('recognition-results');
+            
+            if (!results || results.length === 0) {
+                resultsDiv.innerHTML = '<p style="color: #666;">📷 未检测到人脸</p>';
+                return;
+            }
+            
+            let html = '';
+            results.forEach((result, index) => {
+                const isRecognized = result.recognition !== null;
+                const cssClass = isRecognized ? 'recognized' : 'unknown';
+                
+                html += `<div class="face-result ${cssClass}">`;
+                
+                if (isRecognized) {
+                    html += `<div class="person-name">👤 ${result.recognition.person_name}</div>`;
+                    html += `<div class="attributes">`;
+                    html += `<span class="attribute">🎯 相似度: ${(result.recognition.similarity * 100).toFixed(1)}%</span>`;
+                } else {
+                    html += `<div class="person-name">❓ 未知人员</div>`;
+                    html += `<div class="attributes">`;
+                }
+                
+                if (result.age) {
+                    html += `<span class="attribute">🎂 年龄: ${result.age}</span>`;
+                }
+                if (result.gender) {
+                    const genderIcon = result.gender === 'male' ? '👨' : '👩';
+                    html += `<span class="attribute">${genderIcon} 性别: ${result.gender === 'male' ? '男' : '女'}</span>`;
+                }
+                
+                html += `</div></div>`;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // 页面关闭时清理资源
+        window.addEventListener('beforeunload', function() {
+            stopRecognition();
+        });
+
+        // 页面加载完成后显示初始状态
+        window.addEventListener('load', function() {
+            showStatus('系统已就绪，点击开始按钮启动人脸识别', 'info');
+        });
+    </script>
+</body>
+</html>

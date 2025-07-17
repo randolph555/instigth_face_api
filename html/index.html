@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人脸识别系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-shadow {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #667eea;
+            background-color: #f7fafc;
+        }
+        .upload-area.dragover {
+            border-color: #667eea;
+            background-color: #edf2f7;
+        }
+        .result-card {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .loading {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-user-check text-3xl"></i>
+                    <h1 class="text-2xl md:text-3xl font-bold">人脸识别系统</h1>
+                </div>
+                <div class="hidden md:flex items-center space-x-4 text-sm">
+                    <span><i class="fas fa-server mr-1"></i>API 服务</span>
+                    <span id="status-indicator" class="flex items-center">
+                        <div class="w-2 h-2 bg-green-400 rounded-full mr-1"></div>
+                        在线
+                    </span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Tab Navigation -->
+        <div class="mb-8">
+            <nav class="flex space-x-1 bg-white rounded-lg p-1 card-shadow">
+                <button onclick="switchTab('add')" id="tab-add" class="tab-button flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all duration-200 bg-blue-500 text-white">
+                    <i class="fas fa-user-plus mr-2"></i>添加人脸
+                </button>
+                <button onclick="switchTab('search')" id="tab-search" class="tab-button flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all duration-200 text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-search mr-2"></i>搜索人脸
+                </button>
+                <button onclick="switchTab('compare')" id="tab-compare" class="tab-button flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all duration-200 text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-balance-scale mr-2"></i>比较人脸
+                </button>
+            </nav>
+        </div>
+
+        <!-- Add Face Tab -->
+        <div id="add-tab" class="tab-content">
+            <div class="bg-white rounded-lg card-shadow p-6 md:p-8">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">添加人脸到数据库</h2>
+                    <p class="text-gray-600">上传一张包含人脸的图片，并为其指定姓名</p>
+                </div>
+                
+                <form id="add-form" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-signature mr-1"></i>姓名
+                        </label>
+                        <input type="text" id="person-name" placeholder="请输入姓名" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-image mr-1"></i>上传图片
+                        </label>
+                        <div class="upload-area rounded-lg p-8 text-center cursor-pointer" onclick="document.getElementById('add-file').click()">
+                            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+                            <p class="text-gray-600 mb-2">点击上传或拖拽图片到此处</p>
+                            <p class="text-sm text-gray-400">支持 JPG, PNG, JPEG 格式</p>
+                            <input type="file" id="add-file" accept="image/*" class="hidden">
+                        </div>
+                        <div id="add-preview" class="mt-4 hidden">
+                            <img id="add-preview-img" class="max-w-full h-48 object-cover rounded-lg mx-auto">
+                            <p id="add-file-name" class="text-center text-sm text-gray-600 mt-2"></p>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center">
+                        <i class="fas fa-plus mr-2"></i>
+                        <span id="add-btn-text">添加人脸</span>
+                        <i id="add-loading" class="fas fa-spinner loading ml-2 hidden"></i>
+                    </button>
+                </form>
+                
+                <div id="add-result" class="mt-6 hidden"></div>
+            </div>
+        </div>
+
+        <!-- Search Face Tab -->
+        <div id="search-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg card-shadow p-6 md:p-8">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">搜索相似人脸</h2>
+                    <p class="text-gray-600">上传一张图片，在数据库中搜索相似的人脸</p>
+                </div>
+                
+                <form id="search-form" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-image mr-1"></i>上传图片
+                        </label>
+                        <div class="upload-area rounded-lg p-8 text-center cursor-pointer" onclick="document.getElementById('search-file').click()">
+                            <i class="fas fa-search text-4xl text-gray-400 mb-4"></i>
+                            <p class="text-gray-600 mb-2">点击上传或拖拽图片到此处</p>
+                            <p class="text-sm text-gray-400">支持 JPG, PNG, JPEG 格式</p>
+                            <input type="file" id="search-file" accept="image/*" class="hidden">
+                        </div>
+                        <div id="search-preview" class="mt-4 hidden">
+                            <img id="search-preview-img" class="max-w-full h-48 object-cover rounded-lg mx-auto">
+                            <p id="search-file-name" class="text-center text-sm text-gray-600 mt-2"></p>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center">
+                        <i class="fas fa-search mr-2"></i>
+                        <span id="search-btn-text">搜索人脸</span>
+                        <i id="search-loading" class="fas fa-spinner loading ml-2 hidden"></i>
+                    </button>
+                </form>
+                
+                <div id="search-result" class="mt-6 hidden"></div>
+            </div>
+        </div>
+
+        <!-- Compare Faces Tab -->
+        <div id="compare-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg card-shadow p-6 md:p-8">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">比较两张人脸</h2>
+                    <p class="text-gray-600">上传两张图片，比较其中人脸的相似度</p>
+                </div>
+                
+                <form id="compare-form" class="space-y-6">
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-image mr-1"></i>第一张图片
+                            </label>
+                            <div class="upload-area rounded-lg p-6 text-center cursor-pointer" onclick="document.getElementById('compare-file1').click()">
+                                <i class="fas fa-upload text-3xl text-gray-400 mb-3"></i>
+                                <p class="text-gray-600 text-sm">上传第一张图片</p>
+                                <input type="file" id="compare-file1" accept="image/*" class="hidden">
+                            </div>
+                            <div id="compare-preview1" class="mt-4 hidden">
+                                <img id="compare-preview-img1" class="w-full h-32 object-cover rounded-lg">
+                                <p id="compare-file-name1" class="text-center text-xs text-gray-600 mt-1"></p>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-image mr-1"></i>第二张图片
+                            </label>
+                            <div class="upload-area rounded-lg p-6 text-center cursor-pointer" onclick="document.getElementById('compare-file2').click()">
+                                <i class="fas fa-upload text-3xl text-gray-400 mb-3"></i>
+                                <p class="text-gray-600 text-sm">上传第二张图片</p>
+                                <input type="file" id="compare-file2" accept="image/*" class="hidden">
+                            </div>
+                            <div id="compare-preview2" class="mt-4 hidden">
+                                <img id="compare-preview-img2" class="w-full h-32 object-cover rounded-lg">
+                                <p id="compare-file-name2" class="text-center text-xs text-gray-600 mt-1"></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 flex items-center justify-center">
+                        <i class="fas fa-balance-scale mr-2"></i>
+                        <span id="compare-btn-text">比较人脸</span>
+                        <i id="compare-loading" class="fas fa-spinner loading ml-2 hidden"></i>
+                    </button>
+                </form>
+                
+                <div id="compare-result" class="mt-6 hidden"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-white border-l-4 border-blue-500 rounded-lg shadow-lg p-4 max-w-sm">
+            <div class="flex items-center">
+                <i id="toast-icon" class="fas fa-info-circle text-blue-500 mr-3"></i>
+                <p id="toast-message" class="text-gray-800"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('bg-blue-500', 'text-white');
+                btn.classList.add('text-gray-500', 'hover:text-gray-700');
+            });
+            
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            
+            // Add active class to selected button
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.classList.add('bg-blue-500', 'text-white');
+            activeBtn.classList.remove('text-gray-500', 'hover:text-gray-700');
+        }
+
+        // File upload handlers
+        function setupFileUpload(fileInputId, previewId, previewImgId, fileNameId) {
+            const fileInput = document.getElementById(fileInputId);
+            const preview = document.getElementById(previewId);
+            const previewImg = document.getElementById(previewImgId);
+            const fileName = document.getElementById(fileNameId);
+
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewImg.src = e.target.result;
+                        fileName.textContent = file.name;
+                        preview.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Setup all file uploads
+        setupFileUpload('add-file', 'add-preview', 'add-preview-img', 'add-file-name');
+        setupFileUpload('search-file', 'search-preview', 'search-preview-img', 'search-file-name');
+        setupFileUpload('compare-file1', 'compare-preview1', 'compare-preview-img1', 'compare-file-name1');
+        setupFileUpload('compare-file2', 'compare-preview2', 'compare-preview-img2', 'compare-file-name2');
+
+        // Toast notification
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const messageEl = document.getElementById('toast-message');
+            
+            messageEl.textContent = message;
+            
+            // Set icon and color based on type
+            if (type === 'success') {
+                icon.className = 'fas fa-check-circle text-green-500 mr-3';
+                toast.querySelector('div').className = 'bg-white border-l-4 border-green-500 rounded-lg shadow-lg p-4 max-w-sm';
+            } else if (type === 'error') {
+                icon.className = 'fas fa-exclamation-circle text-red-500 mr-3';
+                toast.querySelector('div').className = 'bg-white border-l-4 border-red-500 rounded-lg shadow-lg p-4 max-w-sm';
+            } else {
+                icon.className = 'fas fa-info-circle text-blue-500 mr-3';
+                toast.querySelector('div').className = 'bg-white border-l-4 border-blue-500 rounded-lg shadow-lg p-4 max-w-sm';
+            }
+            
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        // Show loading state
+        function setLoading(buttonId, loadingId, textId, isLoading, originalText) {
+            const button = document.getElementById(buttonId);
+            const loading = document.getElementById(loadingId);
+            const text = document.getElementById(textId);
+            
+            if (isLoading) {
+                button.disabled = true;
+                button.classList.add('opacity-75', 'cursor-not-allowed');
+                loading.classList.remove('hidden');
+                text.textContent = '处理中...';
+            } else {
+                button.disabled = false;
+                button.classList.remove('opacity-75', 'cursor-not-allowed');
+                loading.classList.add('hidden');
+                text.textContent = originalText;
+            }
+        }
+
+        // Show result
+        function showResult(resultId, data, type) {
+            const resultDiv = document.getElementById(resultId);
+            let html = '';
+            
+            if (type === 'add') {
+                if (data.success) {
+                    html = `
+                        <div class="result-card bg-green-50 border border-green-200 rounded-lg p-4">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                <h3 class="font-semibold text-green-800">添加成功</h3>
+                            </div>
+                            <p class="text-green-700">姓名: ${data.person_name}</p>
+                            <p class="text-green-700">Face ID: ${data.face_id}</p>
+                        </div>
+                    `;
+                } else {
+                    html = `
+                        <div class="result-card bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+                                <h3 class="font-semibold text-red-800">添加失败</h3>
+                            </div>
+                            <p class="text-red-700">${data.message}</p>
+                        </div>
+                    `;
+                }
+            } else if (type === 'search') {
+                if (data.success && data.matches && data.matches.length > 0) {
+                    html = `
+                        <div class="result-card bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-search text-blue-500 mr-2"></i>
+                                <h3 class="font-semibold text-blue-800">找到 ${data.matches.length} 个匹配</h3>
+                            </div>
+                            <div class="space-y-2">
+                    `;
+                    data.matches.forEach(match => {
+                        const similarity = (match.similarity * 100).toFixed(1);
+                        console.log(match);
+                        html += `
+                            <div class="flex items-center justify-between bg-white p-3 rounded border">
+                                <div>
+                                    <p class="font-medium">${match.person_name}</p>
+                                    <p class="font-medium">${match.face_id}</p>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-lg font-bold text-blue-600">${similarity}%</div>
+                                    <div class="text-xs text-gray-500">相似度</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div></div>';
+                } else {
+                    html = `
+                        <div class="result-card bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-search text-yellow-500 mr-2"></i>
+                                <h3 class="font-semibold text-yellow-800">未找到匹配</h3>
+                            </div>
+                            <p class="text-yellow-700">数据库中没有找到相似的人脸</p>
+                        </div>
+                    `;
+                }
+            } else if (type === 'compare') {
+                if (data.success) {
+                    const similarity = (data.similarity * 100).toFixed(1);
+                    const isMatch = data.similarity > 0.6;
+                    const colorClass = isMatch ? 'green' : 'red';
+                    const icon = isMatch ? 'fa-check-circle' : 'fa-times-circle';
+                    
+                    html = `
+                        <div class="result-card bg-${colorClass}-50 border border-${colorClass}-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center">
+                                    <i class="fas ${icon} text-${colorClass}-500 mr-2"></i>
+                                    <h3 class="font-semibold text-${colorClass}-800">比较结果</h3>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-2xl font-bold text-${colorClass}-600">${similarity}%</div>
+                                    <div class="text-xs text-gray-500">相似度</div>
+                                </div>
+                            </div>
+                            <p class="text-${colorClass}-700">
+                                ${isMatch ? '两张图片可能是同一人' : '两张图片可能不是同一人'}
+                            </p>
+                        </div>
+                    `;
+                } else {
+                    html = `
+                        <div class="result-card bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+                                <h3 class="font-semibold text-red-800">比较失败</h3>
+                            </div>
+                            <p class="text-red-700">${data.message}</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            resultDiv.innerHTML = html;
+            resultDiv.classList.remove('hidden');
+        }
+
+        // Add face form handler
+        document.getElementById('add-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const personName = document.getElementById('person-name').value.trim();
+            const fileInput = document.getElementById('add-file');
+            const file = fileInput.files[0];
+            
+            if (!personName) {
+                showToast('请输入姓名', 'error');
+                return;
+            }
+            
+            if (!file) {
+                showToast('请选择图片文件', 'error');
+                return;
+            }
+            
+            setLoading('add-form', 'add-loading', 'add-btn-text', true, '添加人脸');
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('person_name', personName);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/v1/add_face`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                showResult('add-result', data, 'add');
+                
+                if (data.success) {
+                    showToast('人脸添加成功', 'success');
+                    document.getElementById('add-form').reset();
+                    document.getElementById('add-preview').classList.add('hidden');
+                } else {
+                    showToast(data.message || '添加失败', 'error');
+                }
+            } catch (error) {
+                showToast('网络错误，请检查服务是否运行', 'error');
+                console.error('Error:', error);
+            } finally {
+                setLoading('add-form', 'add-loading', 'add-btn-text', false, '添加人脸');
+            }
+        });
+
+        // Search face form handler
+        document.getElementById('search-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('search-file');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showToast('请选择图片文件', 'error');
+                return;
+            }
+            
+            setLoading('search-form', 'search-loading', 'search-btn-text', true, '搜索人脸');
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/v1/search_face`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                showResult('search-result', data, 'search');
+                
+                if (data.success) {
+                    if (data.matches && data.matches.length > 0) {
+                        showToast(`找到 ${data.matches.length} 个匹配`, 'success');
+                    } else {
+                        showToast('未找到匹配的人脸', 'info');
+                    }
+                } else {
+                    showToast(data.message || '搜索失败', 'error');
+                }
+            } catch (error) {
+                showToast('网络错误，请检查服务是否运行', 'error');
+                console.error('Error:', error);
+            } finally {
+                setLoading('search-form', 'search-loading', 'search-btn-text', false, '搜索人脸');
+            }
+        });
+
+        // Compare faces form handler
+        document.getElementById('compare-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const file1Input = document.getElementById('compare-file1');
+            const file2Input = document.getElementById('compare-file2');
+            const file1 = file1Input.files[0];
+            const file2 = file2Input.files[0];
+            
+            if (!file1 || !file2) {
+                showToast('请选择两张图片文件', 'error');
+                return;
+            }
+            
+            setLoading('compare-form', 'compare-loading', 'compare-btn-text', true, '比较人脸');
+            
+            const formData = new FormData();
+            formData.append('file1', file1);
+            formData.append('file2', file2);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/v1/compare_faces`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                showResult('compare-result', data, 'compare');
+                
+                if (data.success) {
+                    const similarity = (data.similarity * 100).toFixed(1);
+                    showToast(`相似度: ${similarity}%`, 'success');
+                } else {
+                    showToast(data.message || '比较失败', 'error');
+                }
+            } catch (error) {
+                showToast('网络错误，请检查服务是否运行', 'error');
+                console.error('Error:', error);
+            } finally {
+                setLoading('compare-form', 'compare-loading', 'compare-btn-text', false, '比较人脸');
+            }
+        });
+
+        // Drag and drop functionality
+        function setupDragAndDrop(uploadAreaSelector, fileInputId) {
+            const uploadArea = document.querySelector(uploadAreaSelector);
+            const fileInput = document.getElementById(fileInputId);
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight(e) {
+                uploadArea.classList.add('dragover');
+            }
+            
+            function unhighlight(e) {
+                uploadArea.classList.remove('dragover');
+            }
+            
+            uploadArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    fileInput.dispatchEvent(new Event('change'));
+                }
+            }
+        }
+
+        // Setup drag and drop for all upload areas
+        setupDragAndDrop('#add-tab .upload-area', 'add-file');
+        setupDragAndDrop('#search-tab .upload-area', 'search-file');
+        setupDragAndDrop('#compare-tab .upload-area:first-of-type', 'compare-file1');
+        setupDragAndDrop('#compare-tab .upload-area:last-of-type', 'compare-file2');
+
+        // Check API status on load
+        async function checkAPIStatus() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/health`);
+                if (response.ok) {
+                    document.getElementById('status-indicator').innerHTML = `
+                        <div class="w-2 h-2 bg-green-400 rounded-full mr-1"></div>
+                        在线
+                    `;
+                } else {
+                    throw new Error('API not healthy');
+                }
+            } catch (error) {
+                document.getElementById('status-indicator').innerHTML = `
+                    <div class="w-2 h-2 bg-red-400 rounded-full mr-1"></div>
+                    离线
+                `;
+            }
+        }
+
+        // Initialize
+        checkAPIStatus();
+    </script>
+</body>
+</html>
