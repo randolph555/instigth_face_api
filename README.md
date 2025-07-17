@@ -37,6 +37,9 @@ https://drive.google.com/file/d/1krOLgjW2tAPaqV-Bw4YALz0xT5zlb5HF/view
 或者
 https://huggingface.co/ezioruan/inswapper_128.onnx/tree/main
 
+模型位置：
+<img width="345" height="406" alt="image" src="https://github.com/user-attachments/assets/49f68f49-c732-42e6-944b-64a91a4beec6" />
+
 
 
 ## 注意点
