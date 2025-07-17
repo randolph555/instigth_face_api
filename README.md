@@ -11,6 +11,9 @@
 - 🚀 高性能GPU加速
 - 📝 完整的API文档
 
+<img width="996" height="806" alt="image" src="https://github.com/user-attachments/assets/8a80f47f-3c3d-4680-a040-a2c74f292501" />
+
+
 ## 快速开始
 
 ### 1. 环境要求
