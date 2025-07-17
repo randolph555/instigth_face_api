@@ -27,6 +27,16 @@ pip install -r requirements.txt
 ![alt text](image.png)
 
 
+### 3. 模型文件下载地址
+人脸识别相关：
+https://github.com/deepinsight/insightface/releases
+<img width="1368" height="676" alt="image" src="https://github.com/user-attachments/assets/f3f06b68-4675-4907-9c5a-ca2810689059" />
+
+换脸：
+https://drive.google.com/file/d/1krOLgjW2tAPaqV-Bw4YALz0xT5zlb5HF/view
+
+
+
 ## 注意点
 ```
 注意安装pip install要确认是在conda环境里
