@@ -34,6 +34,8 @@ https://github.com/deepinsight/insightface/releases
 
 换脸：
 https://drive.google.com/file/d/1krOLgjW2tAPaqV-Bw4YALz0xT5zlb5HF/view
+或者
+https://huggingface.co/ezioruan/inswapper_128.onnx/tree/main
 
 
 
