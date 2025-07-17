@@ -38,7 +38,7 @@ https://huggingface.co/ezioruan/inswapper_128.onnx/tree/main
 模型位置：
 <img width="345" height="406" alt="image" src="https://github.com/user-attachments/assets/49f68f49-c732-42e6-944b-64a91a4beec6" />
 
-milvus文档参考：https://milvus.io/docs/zh/install_standalone-docker-compose.md
+milvus文档参考：https://milvus.io/docs/zh/overview.md
 
 ## 注意点
 ```
